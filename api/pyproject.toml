@@ -1,0 +1,32 @@
+[project]
+name = "kedai-kaki-api"
+version = "0.1.0"
+description = "Kedai Kaki: an AI partner for heartland shopkeepers"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.4.0",
+    "python-multipart>=0.0.9",
+    "google-genai>=2.29.0",
+    "google-cloud-firestore>=2.19.0",
+    "arize-phoenix-otel>=0.13.1",
+    "openinference-instrumentation-google-genai>=1.4.7",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3.0", "httpx>=0.27.0", "ruff>=0.6.0"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+# Long lines left after formatting are prompt text and catalogue rows; File()/Form() defaults are FastAPI idiom.
+ignore = ["E501", "B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
