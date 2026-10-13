@@ -1,7 +1,7 @@
 [project]
-name = "kedai-kaki-api"
+name = "jaga-kedai-api"
 version = "0.1.0"
-description = "Kedai Kaki: an AI partner for heartland shopkeepers"
+description = "Jaga Kedai: an AI partner for heartland shopkeepers"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",

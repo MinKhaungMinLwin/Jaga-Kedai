@@ -701,7 +701,7 @@ wheels = [
 ]
 
 [[package]]
-name = "kedai-kaki-api"
+name = "jaga-kedai-api"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

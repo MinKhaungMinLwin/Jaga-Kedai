@@ -8,7 +8,7 @@ import { TodayScreen } from "./screens/Today";
 import type { Tab } from "./screens/types";
 import { stopSpeaking } from "./util";
 
-const LANG_KEY = "kedai-kaki.lang";
+const LANG_KEY = "jaga-kedai.lang";
 
 function initialLang(): Lang {
   try {
@@ -57,7 +57,7 @@ export function App() {
         <div className="brand">
           <img src="/icon.svg" alt="" width={36} height={36} />
           <div>
-            <strong>Kedai Kaki</strong>
+            <strong>Jaga Kedai</strong>
             <small>{t("tagline")}</small>
           </div>
         </div>

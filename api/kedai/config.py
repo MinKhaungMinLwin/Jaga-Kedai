@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     # Phoenix (Arize) tracing is enabled when a collector endpoint is set.
     phoenix_endpoint: str | None = Field(default=None, validation_alias="PHOENIX_COLLECTOR_ENDPOINT")
     phoenix_api_key: str | None = Field(default=None, validation_alias="PHOENIX_API_KEY", repr=False)
-    phoenix_project: str = Field(default="kedai-kaki", validation_alias="PHOENIX_PROJECT_NAME")
+    phoenix_project: str = Field(default="jaga-kedai", validation_alias="PHOENIX_PROJECT_NAME")
     trace_content: bool = Field(default=False, validation_alias="KEDAI_TRACE_CONTENT")
 
     @field_validator(

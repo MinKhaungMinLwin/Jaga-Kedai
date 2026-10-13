@@ -48,7 +48,7 @@ def configure_tracing(settings) -> None:
 
 @contextmanager
 def span(name: str, kind: str = "CHAIN", **attributes: Any) -> Iterator[trace.Span]:
-    with trace.get_tracer("kedai-kaki").start_as_current_span(name) as current:
+    with trace.get_tracer("jaga-kedai").start_as_current_span(name) as current:
         current.set_attribute("openinference.span.kind", kind)
         for key, value in attributes.items():
             if value is not None:

@@ -178,7 +178,7 @@ def main() -> None:
     from kedai.config import get_settings
     from kedai.store import build_store
 
-    parser = argparse.ArgumentParser(description="Seed the Kedai Kaki demo shop")
+    parser = argparse.ArgumentParser(description="Seed the Jaga Kedai demo shop")
     parser.add_argument("--shop-id", default=None)
     args = parser.parse_args()
     settings = get_settings()

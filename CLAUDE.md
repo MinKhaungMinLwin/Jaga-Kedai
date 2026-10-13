@@ -1,4 +1,4 @@
-# Kedai Kaki — notes for Claude Code
+# Jaga Kedai — notes for Claude Code
 
 AI partner for Singapore heartland provision shops. FastAPI API (`api/`) on Cloud Run, Firestore,
 React 19 + Vite PWA (`web/`) on Firebase Hosting, Gemini via `google-genai`. See README.md.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy Kedai Kaki: Firestore + Cloud Run API (Gemini on Vertex AI) + Firebase Hosting.
+# Deploy Jaga Kedai: Firestore + Cloud Run API (Gemini on Vertex AI) + Firebase Hosting.
 #
 #   PROJECT_ID=my-project deploy/deploy.sh
 #
@@ -9,8 +9,8 @@ set -euo pipefail
 : "${PROJECT_ID:?Set PROJECT_ID to your Google Cloud project ID}"
 REGION="${REGION:-asia-southeast1}"
 MODEL="${MODEL:-gemini-3.5-flash-lite}"
-SERVICE="kedai-kaki-api"
-SA_NAME="kedai-kaki-api"
+SERVICE="jaga-kedai-api"
+SA_NAME="jaga-kedai-api"
 SA="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 MIN_INSTANCES="${MIN_INSTANCES:-1}"   # stays warm through judging; set 0 afterwards to save cost
 
@@ -29,7 +29,7 @@ exists gcloud firestore databases describe --database="(default)" --project "$PR
 
 step "Service account with least-privilege roles"
 exists gcloud iam service-accounts describe "$SA" --project "$PROJECT_ID" ||
-  gcloud iam service-accounts create "$SA_NAME" --display-name "Kedai Kaki API" --project "$PROJECT_ID"
+  gcloud iam service-accounts create "$SA_NAME" --display-name "Jaga Kedai API" --project "$PROJECT_ID"
 for role in roles/datastore.user roles/aiplatform.user; do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:${SA}" --role "$role" \
     --condition=None >/dev/null
@@ -56,7 +56,7 @@ firebase deploy --only hosting,firestore:rules --project "$PROJECT_ID" --non-int
 
 cat <<DONE
 
-Kedai Kaki is live:
+Jaga Kedai is live:
   App: https://${PROJECT_ID}.web.app
   API: ${API_URL}/api/health
 DONE

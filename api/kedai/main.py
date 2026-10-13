@@ -1,4 +1,4 @@
-"""Kedai Kaki API (Cloud Run).
+"""Jaga Kedai API (Cloud Run).
 
 Hard stops: Gemini can propose shelf counts and draft orders, but stock only
 changes when the shopkeeper confirms a scan or marks an order received, and an
@@ -86,7 +86,7 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
     plan_cache: dict[str, tuple[float, list[dict]]] = {}
     briefing_cache: dict[tuple[str, str], dict] = {}
 
-    app = FastAPI(title="Kedai Kaki API", version="0.1.0")
+    app = FastAPI(title="Jaga Kedai API", version="0.1.0")
     app.state.settings = settings
     app.state.store = store
     app.add_middleware(

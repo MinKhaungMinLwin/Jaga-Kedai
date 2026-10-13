@@ -52,7 +52,7 @@ test("home speaks the shopkeeper's language and explains the Deepavali learning"
   fireEvent.click(screen.getByRole("button", { name: "EN" }));
   expect(await screen.findByText("Pure ghee 800g")).toBeInTheDocument();
   expect(screen.getByText("Last Deepavali sold 3.2× more")).toBeInTheDocument();
-  expect(localStorage.getItem("kedai-kaki.lang")).toBe("en");
+  expect(localStorage.getItem("jaga-kedai.lang")).toBe("en");
 });
 
 test("orders are only approved by the shopkeeper, with edited quantities", async () => {
