@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+# Node
+node_modules/
+dist/
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+service-account*.json
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.tsbuildinfo
