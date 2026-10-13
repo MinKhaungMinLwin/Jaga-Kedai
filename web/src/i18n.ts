@@ -88,6 +88,14 @@ const en = {
   openToday: "See what's low",
   micBlocked: "Microphone is not available. Please type instead.",
   error: "Something went wrong. Please try again.",
+  creditTitle: "Credit book",
+  creditEmpty: "Nobody owes you money.",
+  creditTotal: "{amount} owed",
+  creditName: "Name",
+  creditAmount: "Amount ($)",
+  creditNote: "What they took",
+  creditAdd: "Write it down",
+  creditPaid: "Paid",
   suggestions: "What should I order this week?|What is running low?|Prepare Deepavali stock",
 };
 
@@ -172,6 +180,14 @@ const zh: Dict = {
   openToday: "看看缺什么",
   micBlocked: "无法使用麦克风，请改用打字。",
   error: "出了点问题，请再试一次。",
+  creditTitle: "赊账本",
+  creditEmpty: "没有人欠钱。",
+  creditTotal: "共欠 {amount}",
+  creditName: "名字",
+  creditAmount: "金额（$）",
+  creditNote: "拿了什么",
+  creditAdd: "记下来",
+  creditPaid: "已还钱",
   suggestions: "这个星期要订什么货？|什么快卖完了？|准备屠妖节的货",
 };
 
@@ -254,6 +270,14 @@ const ms: Dict = {
   openToday: "Lihat yang hampir habis",
   micBlocked: "Mikrofon tidak dapat digunakan. Sila taip.",
   error: "Ada masalah. Sila cuba lagi.",
+  creditTitle: "Buku hutang",
+  creditEmpty: "Tiada siapa berhutang.",
+  creditTotal: "Hutang {amount}",
+  creditName: "Nama",
+  creditAmount: "Jumlah ($)",
+  creditNote: "Barang yang diambil",
+  creditAdd: "Catat",
+  creditPaid: "Sudah bayar",
   suggestions: "Apa yang perlu dipesan minggu ini?|Barang apa yang hampir habis?|Sediakan stok Deepavali",
 };
 
@@ -336,6 +360,14 @@ const ta: Dict = {
   openToday: "என்ன தீர்கிறது என்று பார்",
   micBlocked: "மைக்ரோஃபோனைப் பயன்படுத்த முடியவில்லை. தட்டச்சு செய்யவும்.",
   error: "ஏதோ தவறு நடந்தது. மீண்டும் முயற்சிக்கவும்.",
+  creditTitle: "கடன் புத்தகம்",
+  creditEmpty: "யாரும் கடன் வைக்கவில்லை.",
+  creditTotal: "மொத்தக் கடன் {amount}",
+  creditName: "பெயர்",
+  creditAmount: "தொகை ($)",
+  creditNote: "என்ன வாங்கினார்கள்",
+  creditAdd: "பதிவு செய்",
+  creditPaid: "செலுத்தப்பட்டது",
   suggestions: "இந்த வாரம் என்ன ஆர்டர் செய்ய வேண்டும்?|என்ன தீர்ந்து வருகிறது?|தீபாவளி பொருட்களைத் தயார் செய்",
 };
 
