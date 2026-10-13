@@ -1,13 +1,13 @@
-# Kedai Kaki 🏪 — an AI partner for heartland shopkeepers
+# Jaga Kedai 🏪 — an AI partner for heartland shopkeepers
 
-> *Kedai* = shop (Malay). *Kaki* = buddy (Singlish).
+> *Jaga* = to look after, *Kedai* = shop (Malay). Inside the app, your assistant is *Kaki*, the buddy (Singlish).
 
 Singapore's neighbourhood provision shops run on memory and a notebook. Supermarkets
 have data teams; Uncle Tan, 64, has a 30-year feel for his shop in Toa Payoh — and
 more comfort in Mandarin than in spreadsheets. When the monsoon or Deepavali shifts
 demand, he finds out when the shelf is already empty.
 
-**Kedai Kaki** lets him run the shop with a phone, in his own language:
+**Jaga Kedai** lets him run the shop with a phone, in his own language:
 
 - 📷 **Snap a shelf, Kaki counts it.** Gemini reads the photo and proposes stock counts; he checks and saves.
 - 🎙 **Ask by voice, in 中文, English, Bahasa Melayu or தமிழ்.** "这个星期要订什么货？" — Kaki answers from the shop's own sales and stock, out loud.
