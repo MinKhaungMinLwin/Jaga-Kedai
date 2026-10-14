@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { api, type Briefing, type Credit, type Outlook, type Today as TodayData } from "../api";
 import type { Key, Lang } from "../i18n";
+import { SpeakButton } from "../SpeakButton";
 import { money, shortDate, speak, stopSpeaking } from "../util";
 import type { ScreenProps } from "./types";
 
@@ -10,11 +11,13 @@ export function CreditBook({
   entries,
   lang,
   t,
+  notify,
   onChange,
 }: {
   entries: Credit[];
   lang: Lang;
   t: ScreenProps["t"];
+  notify: ScreenProps["notify"];
   onChange: () => void;
 }) {
   const [name, setName] = useState("");
@@ -25,35 +28,50 @@ export function CreditBook({
   const cents = Math.round(Number(amount) * 100);
   const total = entries.reduce((sum, entry) => sum + entry.amount_cents, 0);
 
-  const run = async (action: () => Promise<unknown>) => {
+  const run = async <T,>(action: () => Promise<T>): Promise<T | null> => {
     setBusy(true);
     setFailed(false);
     try {
-      await action();
+      const result = await action();
       onChange();
-      return true;
+      return result;
     } catch {
       setFailed(true);
-      return false;
+      return null;
     } finally {
       setBusy(false);
     }
   };
 
   const add = async () => {
-    if (await run(() => api.addCredit({ name: name.trim(), amount_cents: cents, note: note.trim() }))) {
+    const created = await run(() => api.addCredit({ name: name.trim(), amount_cents: cents, note: note.trim() }));
+    if (created) {
       setName("");
       setAmount("");
       setNote("");
+      notify(t("toastCreditAdded", { name: created.name }), () => api.undoCredit(created.id));
     }
   };
+
+  const paid = async (entry: Credit) => {
+    if (await run(() => api.creditPaid(entry.id))) {
+      notify(t("toastCreditPaid", { name: entry.name }), () => api.undoCredit(entry.id));
+    }
+  };
+
+  const spoken = [
+    t("creditTitle"),
+    total > 0 ? t("creditTotal", { amount: money(total, lang) }) : t("creditEmpty"),
+    ...entries.map((entry) => `${entry.name} ${money(entry.amount_cents, lang)} ${entry.note}`),
+  ].join(". ");
 
   return (
     <section className="card credit-book">
       <div className="card-head">
         <h2>{t("creditTitle")}</h2>
-        {total > 0 && <strong className="credit-total">{t("creditTotal", { amount: money(total, lang) })}</strong>}
+        <SpeakButton text={spoken} lang={lang} t={t} />
       </div>
+      {total > 0 && <p className="credit-total">{t("creditTotal", { amount: money(total, lang) })}</p>}
       {entries.length === 0 ? (
         <p className="muted">{t("creditEmpty")}</p>
       ) : (
@@ -64,7 +82,7 @@ export function CreditBook({
                 <strong>{entry.name}</strong> · {money(entry.amount_cents, lang)}
                 {entry.note && <span className="muted"> · {entry.note}</span>}
               </div>
-              <button className="secondary" disabled={busy} onClick={() => run(() => api.creditPaid(entry.id))}>
+              <button className="secondary" disabled={busy} onClick={() => void paid(entry)}>
                 ✓ {t("creditPaid")}
               </button>
             </li>
@@ -139,7 +157,7 @@ export function LowStockRow({ row, lang, t }: { row: Outlook; lang: Lang; t: Scr
   );
 }
 
-export function TodayScreen({ lang, t, go }: ScreenProps) {
+export function TodayScreen({ lang, t, go, notify }: ScreenProps) {
   const [data, setData] = useState<TodayData | null>(null);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [speaking, setSpeaking] = useState(false);
@@ -236,7 +254,25 @@ export function TodayScreen({ lang, t, go }: ScreenProps) {
       )}
 
       <section className="card">
-        <h2>{t("runningLow")}</h2>
+        <div className="card-head">
+          <h2>{t("runningLow")}</h2>
+          <SpeakButton
+            lang={lang}
+            t={t}
+            text={[
+              t("runningLow"),
+              ...data.running_low.slice(0, 10).map((row) =>
+                [
+                  row.names[lang],
+                  row.days_left !== null && t("daysLeft", { n: Math.max(0, Math.round(row.days_left)) }),
+                  row.recommended_quantity > 0 && t("suggest", { n: row.recommended_quantity }),
+                ]
+                  .filter(Boolean)
+                  .join(", "),
+              ),
+            ].join(". ")}
+          />
+        </div>
         {data.running_low.length === 0 ? (
           <p className="muted">{t("allGood")}</p>
         ) : (
@@ -250,7 +286,19 @@ export function TodayScreen({ lang, t, go }: ScreenProps) {
 
       {data.regulars_not_seen.length > 0 && (
         <section className="card">
-          <h2>{t("regulars")}</h2>
+          <div className="card-head">
+            <h2>{t("regulars")}</h2>
+            <SpeakButton
+              lang={lang}
+              t={t}
+              text={[
+                t("regulars"),
+                ...data.regulars_not_seen.map(
+                  (regular) => `${regular.name}, ${t("regularLine", { n: regular.days_since_visit })}`,
+                ),
+              ].join(". ")}
+            />
+          </div>
           <ul className="regulars">
             {data.regulars_not_seen.map((regular) => (
               <li key={regular.name}>
@@ -266,6 +314,7 @@ export function TodayScreen({ lang, t, go }: ScreenProps) {
         entries={data.credits ?? []}
         lang={lang}
         t={t}
+        notify={notify}
         onChange={() => api.today().then(setData).catch(() => setError(t("error")))}
       />
 
