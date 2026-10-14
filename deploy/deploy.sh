@@ -35,6 +35,14 @@ for role in roles/datastore.user roles/aiplatform.user; do
     --condition=None >/dev/null
 done
 
+step "Build account roles (new projects no longer grant these automatically)"
+PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format 'value(projectNumber)')"
+BUILD_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+for role in roles/run.builder roles/logging.logWriter roles/artifactregistry.writer roles/storage.objectViewer; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:${BUILD_SA}" --role "$role" \
+    --condition=None >/dev/null
+done
+
 ENV_VARS="^|^KEDAI_STORE=firestore|KEDAI_AI_BACKEND=vertex|GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
 ENV_VARS+="|GOOGLE_CLOUD_LOCATION=global|KEDAI_MODEL=${MODEL}"
 [[ -n "${ADMIN_TOKEN:-}" ]] && ENV_VARS+="|KEDAI_ADMIN_TOKEN=${ADMIN_TOKEN}"
