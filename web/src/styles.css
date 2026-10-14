@@ -405,6 +405,54 @@ input:focus-visible {
   border-bottom: 0;
 }
 
+/* Credit book */
+.credit-total {
+  color: var(--red-dark);
+  white-space: nowrap;
+}
+.credits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.credits li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.credits li > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.credits button {
+  min-height: 48px;
+}
+.credit-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.credit-form input {
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+.credit-form input:last-of-type,
+.credit-form button {
+  grid-column: 1 / -1;
+}
+.credit-form button {
+  min-height: 56px;
+}
+
 /* Banners */
 .banner {
   margin: 0;

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import { App } from "./App";
@@ -19,6 +19,7 @@ const today = {
   regulars_not_seen: [{ name: "Mr Rajan", days_since_visit: 24, usual_skus: ["GHEE-800"] }],
   draft_orders: 0,
   sold_last_7: 400,
+  credits: [{ id: "c1", name: "Mdm Lim", amount_cents: 860, note: "Bread", status: "owing", created_at: "2026-10-12" }],
 };
 const draft = {
   id: "o1", supplier_id: "murugan", supplier_name: "Sri Murugan Wholesale", status: "draft",
@@ -66,4 +67,22 @@ test("orders are only approved by the shopkeeper, with edited quantities", async
   await waitFor(() => expect(calls.some((call) => call.url === "/api/orders/o1/approve")).toBe(true));
   const approve = calls.find((call) => call.url === "/api/orders/o1/approve");
   expect(JSON.parse(String(approve?.body))).toEqual({ lines: [{ sku: "GHEE-800", quantity: 13 }] });
+});
+
+test("the credit book is written and settled only by the shopkeeper", async () => {
+  const view = within(render(<App />).container);
+  expect(await view.findByText("赊账本")).toBeInTheDocument();
+  expect(view.getByText("Mdm Lim")).toBeInTheDocument();
+  fireEvent.click(view.getByRole("button", { name: /已还钱/ }));
+  await waitFor(() => expect(calls.some((call) => call.url === "/api/credits/c1/paid")).toBe(true));
+
+  const write = view.getByRole("button", { name: "记下来" });
+  expect(write).toBeDisabled();
+  fireEvent.change(view.getByLabelText("名字"), { target: { value: "Mr Rajan" } });
+  fireEvent.change(view.getByLabelText("金额（$）"), { target: { value: "12.40" } });
+  fireEvent.change(view.getByLabelText("拿了什么"), { target: { value: "Ghee" } });
+  fireEvent.click(write);
+  await waitFor(() => expect(calls.some((call) => call.url === "/api/credits")).toBe(true));
+  const added = calls.find((call) => call.url === "/api/credits");
+  expect(JSON.parse(String(added?.body))).toEqual({ name: "Mr Rajan", amount_cents: 1240, note: "Ghee" });
 });

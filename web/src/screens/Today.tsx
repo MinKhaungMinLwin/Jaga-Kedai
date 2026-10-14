@@ -1,9 +1,115 @@
 import { useEffect, useState } from "react";
 
-import { api, type Briefing, type Outlook, type Today as TodayData } from "../api";
+import { api, type Briefing, type Credit, type Outlook, type Today as TodayData } from "../api";
 import type { Key, Lang } from "../i18n";
-import { shortDate, speak, stopSpeaking } from "../util";
+import { money, shortDate, speak, stopSpeaking } from "../util";
 import type { ScreenProps } from "./types";
+
+/** The shop's pay-later notebook. Only the shopkeeper adds entries or marks them paid. */
+export function CreditBook({
+  entries,
+  lang,
+  t,
+  onChange,
+}: {
+  entries: Credit[];
+  lang: Lang;
+  t: ScreenProps["t"];
+  onChange: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const cents = Math.round(Number(amount) * 100);
+  const total = entries.reduce((sum, entry) => sum + entry.amount_cents, 0);
+
+  const run = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      await action();
+      onChange();
+      return true;
+    } catch {
+      setFailed(true);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const add = async () => {
+    if (await run(() => api.addCredit({ name: name.trim(), amount_cents: cents, note: note.trim() }))) {
+      setName("");
+      setAmount("");
+      setNote("");
+    }
+  };
+
+  return (
+    <section className="card credit-book">
+      <div className="card-head">
+        <h2>{t("creditTitle")}</h2>
+        {total > 0 && <strong className="credit-total">{t("creditTotal", { amount: money(total, lang) })}</strong>}
+      </div>
+      {entries.length === 0 ? (
+        <p className="muted">{t("creditEmpty")}</p>
+      ) : (
+        <ul className="credits">
+          {entries.map((entry) => (
+            <li key={entry.id}>
+              <div>
+                <strong>{entry.name}</strong> · {money(entry.amount_cents, lang)}
+                {entry.note && <span className="muted"> · {entry.note}</span>}
+              </div>
+              <button className="secondary" disabled={busy} onClick={() => run(() => api.creditPaid(entry.id))}>
+                ✓ {t("creditPaid")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="credit-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void add();
+        }}
+      >
+        <input
+          aria-label={t("creditName")}
+          placeholder={t("creditName")}
+          value={name}
+          maxLength={80}
+          onChange={(event) => setName(event.target.value)}
+        />
+        <input
+          aria-label={t("creditAmount")}
+          placeholder={t("creditAmount")}
+          type="number"
+          inputMode="decimal"
+          min="0.01"
+          step="0.01"
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+        />
+        <input
+          aria-label={t("creditNote")}
+          placeholder={t("creditNote")}
+          value={note}
+          maxLength={200}
+          onChange={(event) => setNote(event.target.value)}
+        />
+        <button className="primary" type="submit" disabled={busy || !name.trim() || !(cents > 0)}>
+          {t("creditAdd")}
+        </button>
+      </form>
+      {failed && <p className="banner error">{t("error")}</p>}
+    </section>
+  );
+}
 
 export function LowStockRow({ row, lang, t }: { row: Outlook; lang: Lang; t: ScreenProps["t"] }) {
   return (
@@ -155,6 +261,13 @@ export function TodayScreen({ lang, t, go }: ScreenProps) {
           </ul>
         </section>
       )}
+
+      <CreditBook
+        entries={data.credits ?? []}
+        lang={lang}
+        t={t}
+        onChange={() => api.today().then(setData).catch(() => setError(t("error")))}
+      />
 
       <div className="quick">
         <button className="secondary big" onClick={() => go("scan")}>
