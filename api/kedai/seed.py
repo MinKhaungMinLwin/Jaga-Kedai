@@ -21,7 +21,12 @@ from kedai.store import Store, now
 SINGAPORE = ZoneInfo("Asia/Singapore")
 MIN_HISTORY_DAYS = 120
 FESTIVAL_LOOKBACK_DAYS = 70  # baseline month + rush weeks before last Deepavali
-COLLECTIONS = ("products", "suppliers", "daily_sales", "regulars", "scans", "orders", "activity")
+COLLECTIONS = ("products", "suppliers", "daily_sales", "regulars", "scans", "orders", "activity", "credits")
+# Demo credit book: (name, amount in cents, what they took, days ago).
+DEMO_CREDITS = (
+    ("Mdm Lim", 860, "Bread, kopi-O", 2),
+    ("Cik Siti", 1590, "Rice 5kg", 1),
+)
 DEEPAVALI = {2025: date(2025, 10, 20), 2026: date(2026, 11, 8), 2027: date(2027, 10, 28)}
 WEEKDAY = (0.92, 0.9, 0.93, 0.97, 1.08, 1.3, 1.25)
 
@@ -145,6 +150,21 @@ def seed_shop(store: Store, shop_id: str, today: date | None = None) -> dict:
                 "last_visit": (today - timedelta(days=REGULAR_LAST_SEEN[regular_id])).isoformat(),
             }
             for regular_id, name, skus, gap in REGULARS
+        },
+    )
+    # Fixed IDs, so two requests re-seeding at the same moment cannot duplicate entries.
+    store.put_many(
+        shop_id,
+        "credits",
+        {
+            f"demo-{index}": {
+                "name": name,
+                "amount_cents": amount_cents,
+                "note": note,
+                "status": "owing",
+                "created_at": (now() - timedelta(days=days_ago)).isoformat(),
+            }
+            for index, (name, amount_cents, note, days_ago) in enumerate(DEMO_CREDITS)
         },
     )
     store.create(

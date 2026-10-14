@@ -61,6 +61,12 @@ class SpeakRequest(BaseModel):
     text: str = Field(min_length=1, max_length=600)
 
 
+class CreditEntry(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    amount_cents: int = Field(ge=1, le=1_000_000)
+    note: str = Field(default="", max_length=200)
+
+
 class RateLimiter:
     def __init__(self, per_minute: int):
         self.per_minute = per_minute
@@ -183,6 +189,11 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
                 )
         return sorted(overdue, key=lambda item: -item["days_since_visit"])
 
+    def owing() -> list[dict]:
+        # Sorted here rather than in Firestore, so the query needs no composite index.
+        entries = store.list(shop_id(), "credits", where=("status", "==", "owing"))
+        return sorted(entries, key=lambda entry: entry["created_at"], reverse=True)
+
     def ai_context(lang: str) -> dict:
         today = today_sg()
         rows = outlook()
@@ -216,6 +227,10 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
             "regulars_not_seen": [
                 {**item, "usual_items": [names.get(sku, sku) for sku in item.pop("usual_skus")]}
                 for item in overdue_regulars(today)
+            ],
+            "customers_owing_money": [
+                {"name": entry["name"], "owes_dollars": entry["amount_cents"] / 100, "took": entry["note"]}
+                for entry in owing()
             ],
             "orders_waiting_for_approval": [
                 {"supplier": order["supplier_name"], "items": len(order["lines"])}
@@ -319,7 +334,40 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
             "regulars_not_seen": overdue_regulars(today),
             "draft_orders": len(drafts),
             "sold_last_7": sum(row["sold_last_7"] for row in rows),
+            "credits": owing(),
         }
+
+    # Credit book: the notebook of who took goods now and pays later. Only the shopkeeper writes to it.
+    @app.get("/api/credits")
+    def list_credits():
+        fresh_shop()
+        return owing()
+
+    @app.post("/api/credits", status_code=201)
+    def add_credit(payload: CreditEntry):
+        fresh_shop()
+        entry = {
+            "name": payload.name.strip(),
+            "amount_cents": payload.amount_cents,
+            "note": payload.note.strip(),
+            "status": "owing",
+            "created_at": now().isoformat(),
+        }
+        entry["id"] = store.create(shop_id(), "credits", entry)
+        log(f"{entry['name']} took ${payload.amount_cents / 100:.2f} on credit.", "credit_added")
+        return entry
+
+    @app.post("/api/credits/{credit_id}/paid")
+    def mark_credit_paid(credit_id: str):
+        fresh_shop()
+        entry = store.get(shop_id(), "credits", credit_id)
+        if entry is None:
+            raise HTTPException(status_code=404, detail="Credit entry not found")
+        if entry["status"] != "owing":
+            raise HTTPException(status_code=409, detail="This credit was already paid")
+        store.update(shop_id(), "credits", credit_id, {"status": "paid", "paid_at": now().isoformat()})
+        log(f"{entry['name']} paid back ${entry['amount_cents'] / 100:.2f}.", "credit_paid")
+        return {"status": "paid"}
 
     @app.get("/api/products")
     def products():

@@ -40,6 +40,16 @@ export interface Today {
   regulars_not_seen: { name: string; days_since_visit: number; usual_skus: string[] }[];
   draft_orders: number;
   sold_last_7: number;
+  credits: Credit[];
+}
+
+export interface Credit {
+  id: string;
+  name: string;
+  amount_cents: number;
+  note: string;
+  status: "owing" | "paid";
+  created_at: string;
 }
 
 export interface Briefing {
@@ -139,6 +149,9 @@ export const api = {
     request<Order>(`/orders/${id}/approve`, json({ lines })),
   receive: (id: string) => request<{ status: string }>(`/orders/${id}/receive`, { method: "POST" }),
   cancel: (id: string) => request<{ status: string }>(`/orders/${id}/cancel`, { method: "POST" }),
+  addCredit: (entry: { name: string; amount_cents: number; note: string }) =>
+    request<Credit>("/credits", json(entry)),
+  creditPaid: (id: string) => request<{ status: string }>(`/credits/${id}/paid`, { method: "POST" }),
   ask: (lang: Lang, input: { text?: string; audio?: Blob }) => {
     const form = new FormData();
     form.append("lang", lang);

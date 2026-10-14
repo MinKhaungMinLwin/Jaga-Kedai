@@ -153,6 +153,21 @@ def test_manual_count_and_admin_reset(client):
     assert next(p for p in client.get("/api/products").json() if p["sku"] == "GHEE-800")["on_hand"] != 40
 
 
+def test_credit_book_records_and_settles_pay_later_sales(client):
+    assert [entry["name"] for entry in client.get("/api/today").json()["credits"]] == ["Cik Siti", "Mdm Lim"]
+
+    added = client.post("/api/credits", json={"name": " Mr Rajan ", "amount_cents": 1240, "note": "Ghee"})
+    assert added.status_code == 201 and added.json()["name"] == "Mr Rajan"
+    assert client.get("/api/credits").json()[0]["id"] == added.json()["id"]
+    assert client.post("/api/credits", json={"name": "Mr Rajan", "amount_cents": 0}).status_code == 422
+
+    assert client.post(f"/api/credits/{added.json()['id']}/paid").json() == {"status": "paid"}
+    assert client.post(f"/api/credits/{added.json()['id']}/paid").status_code == 409
+    assert client.post("/api/credits/nope/paid").status_code == 404
+    assert "Mr Rajan" not in {entry["name"] for entry in client.get("/api/credits").json()}
+    assert "credit_paid" in {item["type"] for item in client.get("/api/activity").json()}
+
+
 def test_demo_shop_reseeds_on_a_new_day(monkeypatch):
     store = MemoryStore()
     seed_shop(store, "demo", TODAY - timedelta(days=3))
