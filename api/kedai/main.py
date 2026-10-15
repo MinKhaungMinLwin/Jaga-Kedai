@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 from kedai import ai
 from kedai.config import Settings, get_settings
 from kedai.forecast import plan, reason_codes
+from kedai.messages import order_message
 from kedai.seed import ensure_demo_fresh, next_deepavali, previous_deepavali, rain_chance, seed_shop, today_sg
 from kedai.store import Store, build_store, now
 from kedai.tracing import configure_tracing
@@ -59,6 +60,10 @@ class DraftRequest(BaseModel):
 
 class SpeakRequest(BaseModel):
     text: str = Field(min_length=1, max_length=600)
+
+
+class SupplierPhone(BaseModel):
+    whatsapp: str = Field(pattern=r"^\+?[\d ]{8,20}$")
 
 
 class CreditEntry(BaseModel):
@@ -290,19 +295,19 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
             log(f"Kaki prepared {len(created)} draft orders for review.", "orders_drafted")
         return created
 
-    def whatsapp_message(shop: dict, order: dict, supplier: dict) -> tuple[str, str]:
-        delivery = date.fromisoformat(order["expected_delivery"]).strftime("%a %d %b")
-        lines = "\n".join(
-            f"- {line['names']['en']} x {line['quantity']} {line['unit']}"
-            for line in order["lines"]
-            if line["quantity"] > 0
-        )
-        text = (
-            f"Hi {supplier.get('name', '')}, this is {shop['name']} ({shop['area']}).\n"
-            f"Order please:\n{lines}\nDeliver by {delivery} if possible. Thank you!"
-        )
+    def whatsapp_link(supplier: dict, text: str) -> str:
         number = "".join(ch for ch in (supplier.get("whatsapp") or "") if ch.isdigit())
-        return text, f"https://wa.me/{number}?text={quote(text)}"
+        return f"https://wa.me/{number}?text={quote(text)}"
+
+    def whatsapp_message(shop: dict, order: dict, supplier: dict) -> tuple[str, str]:
+        text = order_message(
+            supplier=supplier.get("name", ""),
+            shop=shop["name"],
+            area=shop["area"],
+            lines=order["lines"],
+            day=date.fromisoformat(order["expected_delivery"]),
+        )
+        return text, whatsapp_link(supplier, text)
 
     # -- routes -----------------------------------------------------------------
 
@@ -368,6 +373,23 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
         store.update(shop_id(), "credits", credit_id, {"status": "paid", "paid_at": now().isoformat()})
         log(f"{entry['name']} paid back ${entry['amount_cents'] / 100:.2f}.", "credit_paid")
         return {"status": "paid"}
+
+    @app.post("/api/credits/{credit_id}/undo")
+    def undo_credit(credit_id: str):
+        """Undo right after a tap: a paid entry is owing again; a new entry is removed."""
+        fresh_shop()
+        entry = store.get(shop_id(), "credits", credit_id)
+        if entry is None:
+            raise HTTPException(status_code=404, detail="Credit entry not found")
+        if entry["status"] == "paid":
+            back = "owing"
+        elif entry["status"] == "owing":
+            back = "removed"
+        else:
+            raise HTTPException(status_code=409, detail="Nothing to undo for this entry")
+        store.update(shop_id(), "credits", credit_id, {"status": back, "paid_at": None})
+        log(f"Undo: {entry['name']}'s credit entry is {back}.", "undo")
+        return {"status": back}
 
     @app.get("/api/products")
     def products():
@@ -486,7 +508,27 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
     def list_orders():
         fresh_shop()
         orders = store.list(shop_id(), "orders", order_by="created_at", descending=True, limit=40)
-        return [order for order in orders if order["status"] != "replaced"]
+        sups = suppliers()
+        listed = []
+        for order in orders:
+            if order["status"] == "replaced":
+                continue
+            supplier = sups.get(order["supplier_id"], {})
+            order["supplier_whatsapp"] = supplier.get("whatsapp") or ""
+            if order.get("message"):
+                # Built at read time so a number saved after approval still opens the right chat.
+                order["whatsapp_url"] = whatsapp_link(supplier, order["message"])
+            listed.append(order)
+        return listed
+
+    @app.put("/api/suppliers/{supplier_id}/whatsapp")
+    def set_supplier_whatsapp(supplier_id: str, payload: SupplierPhone):
+        fresh_shop()
+        if store.get(shop_id(), "suppliers", supplier_id) is None:
+            raise HTTPException(status_code=404, detail="Supplier not found")
+        number = "".join(ch for ch in payload.whatsapp if ch.isdigit())
+        store.update(shop_id(), "suppliers", supplier_id, {"whatsapp": number})
+        return {"whatsapp": number}
 
     @app.post("/api/orders/draft")
     def create_drafts(payload: DraftRequest | None = None):
@@ -550,9 +592,42 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
             raise HTTPException(status_code=404, detail="Order not found")
         if order["status"] not in ("draft", "approved"):
             raise HTTPException(status_code=409, detail="This order can no longer be cancelled")
-        store.update(shop_id(), "orders", order_id, {"status": "cancelled", "updated_at": now().isoformat()})
+        store.update(
+            shop_id(),
+            "orders",
+            order_id,
+            {"status": "cancelled", "previous_status": order["status"], "updated_at": now().isoformat()},
+        )
         invalidate()
         return {"status": "cancelled"}
+
+    @app.post("/api/orders/{order_id}/undo")
+    def undo_order(order_id: str):
+        """Step an order back one stage, for the shopkeeper's Undo right after a tap."""
+        fresh_shop()
+        order = store.get(shop_id(), "orders", order_id)
+        if order is None:
+            raise HTTPException(status_code=404, detail="Order not found")
+        status = order["status"]
+        if status == "approved":
+            back = "draft"
+            fields = {"message": None, "whatsapp_url": None, "approved_at": None}
+        elif status == "cancelled":
+            back = order.get("previous_status") or "draft"
+            fields = {}
+        elif status == "received":
+            back = "approved"
+            fields = {"received_at": None}
+            for line in order["lines"]:
+                store.increment(shop_id(), "products", line["sku"], "on_hand", -int(line["quantity"]))
+        else:
+            raise HTTPException(status_code=409, detail="Nothing to undo for this order")
+        store.update(
+            shop_id(), "orders", order_id, {**fields, "status": back, "updated_at": now().isoformat()}
+        )
+        invalidate()
+        log(f"Undo: order to {order['supplier_name']} is {back} again.", "undo", order_id=order_id)
+        return {"status": back}
 
     @app.post("/api/ask")
     async def ask_kaki(

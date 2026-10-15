@@ -98,6 +98,7 @@ export interface Order {
   expected_delivery: string;
   message?: string;
   whatsapp_url?: string;
+  supplier_whatsapp?: string;
 }
 
 export interface AskReply {
@@ -152,6 +153,10 @@ export const api = {
   addCredit: (entry: { name: string; amount_cents: number; note: string }) =>
     request<Credit>("/credits", json(entry)),
   creditPaid: (id: string) => request<{ status: string }>(`/credits/${id}/paid`, { method: "POST" }),
+  undoCredit: (id: string) => request<{ status: string }>(`/credits/${id}/undo`, { method: "POST" }),
+  undoOrder: (id: string) => request<{ status: string }>(`/orders/${id}/undo`, { method: "POST" }),
+  setSupplierPhone: (supplierId: string, whatsapp: string) =>
+    request<{ whatsapp: string }>(`/suppliers/${supplierId}/whatsapp`, { ...json({ whatsapp }), method: "PUT" }),
   ask: (lang: Lang, input: { text?: string; audio?: Blob }) => {
     const form = new FormData();
     form.append("lang", lang);

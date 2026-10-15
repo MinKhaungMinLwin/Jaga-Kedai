@@ -168,6 +168,43 @@ def test_credit_book_records_and_settles_pay_later_sales(client):
     assert "credit_paid" in {item["type"] for item in client.get("/api/activity").json()}
 
 
+def test_whatsapp_order_is_english_and_uses_saved_number(client):
+    drafts = client.post("/api/orders/draft", json={}).json()
+    huat = next(order for order in drafts if order["supplier_id"] == "huat")
+    approved = client.post(f"/api/orders/{huat['id']}/approve").json()
+    assert approved["message"].startswith("Hi Ah Huat Trading, this is Ah Tan Provision Shop")
+    assert "Order please:" in approved["message"]
+
+    assert client.put("/api/suppliers/huat/whatsapp", json={"whatsapp": "abc"}).status_code == 422
+    assert client.put("/api/suppliers/nope/whatsapp", json={"whatsapp": "+65 9123 4567"}).status_code == 404
+    assert client.put("/api/suppliers/huat/whatsapp", json={"whatsapp": "+65 9123 4567"}).json() == {
+        "whatsapp": "6591234567"
+    }
+    listed = next(order for order in client.get("/api/orders").json() if order["id"] == huat["id"])
+    assert listed["whatsapp_url"].startswith("https://wa.me/6591234567?text=")
+
+
+def test_undo_steps_orders_and_credits_back(client):
+    drafts = client.post("/api/orders/draft", json={}).json()
+    order = drafts[0]
+    sku = order["lines"][0]["sku"]
+    stock = next(p for p in client.get("/api/products").json() if p["sku"] == sku)["on_hand"]
+    client.post(f"/api/orders/{order['id']}/approve")
+    client.post(f"/api/orders/{order['id']}/receive")
+    assert client.post(f"/api/orders/{order['id']}/undo").json() == {"status": "approved"}
+    assert next(p for p in client.get("/api/products").json() if p["sku"] == sku)["on_hand"] == stock
+    assert client.post(f"/api/orders/{order['id']}/undo").json() == {"status": "draft"}
+    assert client.post(f"/api/orders/{order['id']}/undo").status_code == 409
+    client.post(f"/api/orders/{order['id']}/cancel")
+    assert client.post(f"/api/orders/{order['id']}/undo").json() == {"status": "draft"}
+
+    entry = client.post("/api/credits", json={"name": "Mr Rajan", "amount_cents": 500}).json()
+    client.post(f"/api/credits/{entry['id']}/paid")
+    assert client.post(f"/api/credits/{entry['id']}/undo").json() == {"status": "owing"}
+    assert client.post(f"/api/credits/{entry['id']}/undo").json() == {"status": "removed"}
+    assert entry["id"] not in {item["id"] for item in client.get("/api/credits").json()}
+
+
 def test_demo_shop_reseeds_on_a_new_day(monkeypatch):
     store = MemoryStore()
     seed_shop(store, "demo", TODAY - timedelta(days=3))
