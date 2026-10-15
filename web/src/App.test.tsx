@@ -86,3 +86,15 @@ test("the credit book is written and settled only by the shopkeeper", async () =
   const added = calls.find((call) => call.url === "/api/credits");
   expect(JSON.parse(String(added?.body))).toEqual({ name: "Mr Rajan", amount_cents: 1240, note: "Ghee" });
 });
+
+test("approving an order can be undone, and text size is remembered", async () => {
+  const view = within(render(<App />).container);
+  fireEvent.click(view.getByRole("button", { name: /字体大小/ }));
+  expect(localStorage.getItem("jaga-kedai.size")).toBe("1");
+
+  fireEvent.click(await view.findByRole("button", { name: /订货/ }));
+  expect(await view.findByText(/1 张订单等您确认/)).toBeInTheDocument();
+  fireEvent.click(await view.findByRole("button", { name: /批准/ }));
+  fireEvent.click(await view.findByRole("button", { name: /撤销/ }));
+  await waitFor(() => expect(calls.some((call) => call.url === "/api/orders/o1/undo")).toBe(true));
+});

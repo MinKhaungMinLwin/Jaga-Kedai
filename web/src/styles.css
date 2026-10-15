@@ -18,7 +18,7 @@
   --radius: 16px;
   --shadow: 0 1px 2px #1f1a170d, 0 6px 18px #1f1a170f;
   font-family: "Noto Sans", "Noto Sans SC", "Noto Sans Tamil", system-ui, sans-serif;
-  font-size: 18px;
+  font-size: calc(18px * var(--text-scale, 1));
   line-height: 1.45;
   color: var(--ink);
   background: var(--cream);
@@ -78,11 +78,11 @@ input,
 }
 .brand strong {
   display: block;
-  font-size: 19px;
+  font-size: calc(19px * var(--text-scale, 1));
 }
 .brand small {
   display: block;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   opacity: 0.9;
 }
 .langs {
@@ -100,7 +100,7 @@ input,
   border-radius: 999px;
   background: transparent;
   color: white;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   font-weight: 600;
   cursor: pointer;
 }
@@ -117,7 +117,7 @@ input,
   bottom: 0;
   z-index: 5;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   max-width: 640px;
   margin: 0 auto;
   padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
@@ -134,12 +134,17 @@ input,
   border-radius: 12px;
   background: transparent;
   color: var(--muted);
-  font-size: 14px;
+  min-width: 0;
+  /* Tab labels grow less than body text, and long Tamil words wrap instead of pushing tabs off screen. */
+  font-size: calc(13px * min(var(--text-scale, 1), 1.15));
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
   font-weight: 600;
   cursor: pointer;
 }
 .tabs button span {
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
 }
 .tabs button.active {
   background: var(--red-soft);
@@ -156,7 +161,7 @@ main {
 }
 .screen-head h1 {
   margin: 4px 0 2px;
-  font-size: 26px;
+  font-size: calc(26px * var(--text-scale, 1));
   line-height: 1.2;
 }
 .screen-head p {
@@ -166,7 +171,7 @@ main {
   color: var(--muted);
 }
 .small {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
 }
 .center {
   text-align: center;
@@ -181,7 +186,7 @@ main {
 }
 .card h2 {
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 .card-head {
   display: flex;
@@ -248,7 +253,7 @@ input:focus-visible {
 .big {
   min-height: 60px;
   width: 100%;
-  font-size: 19px;
+  font-size: calc(19px * var(--text-scale, 1));
 }
 .whatsapp {
   background: var(--whatsapp);
@@ -270,7 +275,7 @@ input:focus-visible {
 }
 .quick {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -288,7 +293,7 @@ input:focus-visible {
   border-radius: 999px;
   background: var(--paper);
   border: 1px solid var(--line);
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   font-weight: 600;
 }
 .chip.action {
@@ -296,7 +301,7 @@ input:focus-visible {
   justify-content: flex-start;
   text-align: left;
   color: var(--ink);
-  font-size: 17px;
+  font-size: calc(17px * var(--text-scale, 1));
   border-radius: 14px;
 }
 .event-deepavali {
@@ -318,7 +323,7 @@ input:focus-visible {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--text-scale, 1));
   font-weight: 600;
   background: #f3ece4;
   color: var(--muted);
@@ -379,11 +384,11 @@ input:focus-visible {
   gap: 4px;
 }
 .stock-numbers {
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   color: var(--muted);
 }
 .learned {
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   color: var(--amber-ink);
 }
 .suggest-pill {
@@ -393,7 +398,7 @@ input:focus-visible {
   background: var(--green-soft);
   color: var(--green);
   font-weight: 700;
-  font-size: 15px;
+  font-size: calc(15px * var(--text-scale, 1));
   white-space: nowrap;
 }
 .regulars li {
@@ -407,8 +412,9 @@ input:focus-visible {
 
 /* Credit book */
 .credit-total {
+  margin: 0 0 4px;
+  font-weight: 700;
   color: var(--red-dark);
-  white-space: nowrap;
 }
 .credits {
   list-style: none;
@@ -499,7 +505,7 @@ input:focus-visible {
   padding: 6px 10px;
   border: 2px solid var(--line);
   border-radius: 12px;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   font-weight: 700;
   text-align: center;
 }
@@ -509,7 +515,7 @@ input:focus-visible {
   flex-shrink: 0;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text-scale, 1));
   font-weight: 700;
   text-align: right;
 }
@@ -555,7 +561,7 @@ input:focus-visible {
   width: 48px;
   min-height: 48px;
   padding: 0;
-  font-size: 24px;
+  font-size: calc(24px * var(--text-scale, 1));
   background: var(--cream);
   border: 2px solid var(--line);
   color: var(--ink);
@@ -563,16 +569,16 @@ input:focus-visible {
 .stepper output {
   min-width: 44px;
   text-align: center;
-  font-size: 22px;
+  font-size: calc(22px * var(--text-scale, 1));
   font-weight: 700;
 }
 .qty {
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 .total {
   margin: 10px 0;
   text-align: right;
-  font-size: 19px;
+  font-size: calc(19px * var(--text-scale, 1));
 }
 
 /* Ask */
@@ -615,10 +621,10 @@ input:focus-visible {
   border-radius: 999px;
   background: var(--red);
   color: white;
-  font-size: 20px;
+  font-size: calc(20px * var(--text-scale, 1));
 }
 .mic span:first-child {
-  font-size: 26px;
+  font-size: calc(26px * var(--text-scale, 1));
 }
 .mic.recording {
   background: var(--ink);
@@ -650,7 +656,7 @@ input:focus-visible {
 
 @media (max-width: 380px) {
   :root {
-    font-size: 17px;
+    font-size: calc(17px * var(--text-scale, 1));
   }
   .quick {
     grid-template-columns: 1fr;
@@ -675,4 +681,108 @@ body {
 .status {
   white-space: normal;
   max-width: 48%;
+}
+
+/* Text size: a little bigger than the language buttons, so it's easy to find and tap */
+.text-size {
+  min-height: 44px;
+  min-width: 56px;
+  margin-left: auto;
+  padding: 4px 12px;
+  border: 2px solid white;
+  border-radius: 999px;
+  background: transparent;
+  color: white;
+  font-size: calc(20px * var(--text-scale, 1));
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Read-aloud button on each card */
+.speak {
+  flex-shrink: 0;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+/* Undo bar, shown for 10 seconds after an action */
+.toast {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 616px;
+  margin: 0 auto;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: white;
+  font-size: calc(17px * var(--text-scale, 1));
+  box-shadow: var(--shadow);
+}
+.toast span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.undo {
+  min-height: 52px;
+  padding: 6px 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--yellow);
+  color: var(--ink);
+  font-size: calc(19px * var(--text-scale, 1));
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Orders: waiting status and supplier number */
+.waiting {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--amber-soft);
+  color: var(--amber-ink);
+  font-weight: 700;
+}
+.phone-form {
+  display: grid;
+  gap: 6px;
+}
+.phone-form label {
+  font-weight: 700;
+}
+.phone-form p {
+  margin: 0;
+}
+.phone-form input {
+  flex: 1 1 180px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+}
+.phone-form button {
+  min-height: 52px;
+}
+
+/* Big text in Tamil/Malay: let card headings wrap rather than push the card wider than the screen */
+.card-head {
+  flex-wrap: wrap;
+}
+.screen > * {
+  min-width: 0;
+}
+
+.quick button {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

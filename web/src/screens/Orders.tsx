@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { api, type Order } from "../api";
 import type { Key } from "../i18n";
+import { SpeakButton } from "../SpeakButton";
 import { money, shortDate } from "../util";
 import type { ScreenProps } from "./types";
 
@@ -9,6 +10,7 @@ function OrderCard({
   order,
   lang,
   t,
+  notify,
   onChanged,
 }: ScreenProps & { order: Order; onChanged: () => void }) {
   const [quantities, setQuantities] = useState<Record<string, number>>(
@@ -16,18 +18,30 @@ function OrderCard({
   );
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [phone, setPhone] = useState("");
   const editable = order.status === "draft";
   const total = order.lines.reduce((sum, line) => sum + (quantities[line.sku] ?? 0) * line.unit_cost_cents, 0);
 
-  const run = async (action: () => Promise<unknown>) => {
+  /** Runs an order action, then offers Undo for it. */
+  const run = async (action: () => Promise<unknown>, toast?: Key) => {
     setBusy(true);
     try {
       await action();
+      if (toast) notify(t(toast, { supplier: order.supplier_name }), () => api.undoOrder(order.id));
       onChanged();
+    } catch {
+      notify(t("error"));
     } finally {
       setBusy(false);
     }
   };
+
+  const spoken = [
+    order.supplier_name,
+    t(`status_${order.status}` as Key),
+    ...order.lines.map((line) => `${line.names[lang]} × ${editable ? quantities[line.sku] : line.quantity}`),
+    `${t("total")} ${money(editable ? total : order.total_cents, lang)}`,
+  ].join(". ");
 
   const step = (sku: string, delta: number) =>
     setQuantities((current) => ({ ...current, [sku]: Math.max(0, (current[sku] ?? 0) + delta) }));
@@ -39,7 +53,10 @@ function OrderCard({
           <h2>{order.supplier_name}</h2>
           <p className="muted">{t("deliveryBy", { date: shortDate(order.expected_delivery, lang) })}</p>
         </div>
-        <span className={`status status-${order.status}`}>{t(`status_${order.status}` as Key)}</span>
+        <div>
+          <span className={`status status-${order.status}`}>{t(`status_${order.status}` as Key)}</span>
+          <SpeakButton text={spoken} lang={lang} t={t} />
+        </div>
       </div>
       <ul className="order-lines">
         {order.lines.map((line) => (
@@ -82,23 +99,56 @@ function OrderCard({
             className="primary big"
             disabled={busy || total === 0}
             onClick={() =>
-              void run(() =>
-                api.approve(
-                  order.id,
-                  order.lines.map((line) => ({ sku: line.sku, quantity: quantities[line.sku] ?? 0 })),
-                ),
+              void run(
+                () =>
+                  api.approve(
+                    order.id,
+                    order.lines.map((line) => ({ sku: line.sku, quantity: quantities[line.sku] ?? 0 })),
+                  ),
+                "toastApproved",
               )
             }
           >
             ✓ {t("approve")}
           </button>
-          <button className="ghost" disabled={busy} onClick={() => void run(() => api.cancel(order.id))}>
+          <button
+            className="ghost"
+            disabled={busy}
+            onClick={() => void run(() => api.cancel(order.id), "toastCancelled")}
+          >
             {t("cancel")}
           </button>
         </div>
       )}
       {order.status === "approved" && (
         <div className="stack">
+          {!order.supplier_whatsapp && (
+            <form
+              className="phone-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void run(() => api.setSupplierPhone(order.supplier_id, phone));
+              }}
+            >
+              <label htmlFor={`phone-${order.id}`}>{t("supplierPhone")}</label>
+              <p className="muted small">{t("phoneHelp")}</p>
+              <div className="row">
+                <input
+                  id={`phone-${order.id}`}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="+65 9123 4567"
+                  pattern="\+?[\d ]{8,20}"
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                />
+                <button className="secondary" type="submit" disabled={busy || phone.replace(/\D/g, "").length < 8}>
+                  {t("savePhone")}
+                </button>
+              </div>
+            </form>
+          )}
           {order.whatsapp_url && (
             <a className="button whatsapp big" href={order.whatsapp_url} target="_blank" rel="noreferrer">
               {t("sendWhatsApp")}
@@ -116,7 +166,8 @@ function OrderCard({
                 {copied ? t("copied") : t("copyMessage")}
               </button>
             )}
-            <button className="secondary" disabled={busy} onClick={() => void run(() => api.receive(order.id))}>
+            <button className="secondary" disabled={busy} onClick={() => void run(() => api.receive(order.id), "toastReceived")}
+            >
               📦 {t("received")}
             </button>
           </div>
@@ -148,6 +199,7 @@ export function OrdersScreen(props: ScreenProps) {
 
   const active = (orders ?? []).filter((order) => order.status === "draft" || order.status === "approved");
   const done = (orders ?? []).filter((order) => order.status === "received").slice(0, 3);
+  const waiting = active.filter((order) => order.status === "draft").length;
 
   return (
     <div className="screen">
@@ -156,9 +208,15 @@ export function OrdersScreen(props: ScreenProps) {
         <p className="banner info">🛑 {t("hardStop")}</p>
       </header>
       {orders === null && <p className="muted center">{t("loading")}</p>}
-      {orders !== null && !active.some((order) => order.status === "draft") && (
-        <button className="primary big" onClick={() => void prepare()} disabled={busy}>
-          {busy ? t("loading") : t("prepareOrders")}
+      {waiting > 0 && <p className="waiting">⏳ {t("waitingCount", { n: waiting })}</p>}
+      {/* Always visible, so the owner never has to hunt for it; new drafts replace old ones. */}
+      {orders !== null && (
+        <button
+          className={waiting > 0 ? "secondary big" : "primary big"}
+          onClick={() => void prepare()}
+          disabled={busy}
+        >
+          {busy ? t("loading") : waiting > 0 ? t("prepareNew") : t("prepareOrders")}
         </button>
       )}
       {orders !== null && active.length === 0 && <p className="muted">{t("noOrders")}</p>}
