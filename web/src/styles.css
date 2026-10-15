@@ -117,7 +117,7 @@ input,
   bottom: 0;
   z-index: 5;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   max-width: 640px;
   margin: 0 auto;
   padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
@@ -134,7 +134,12 @@ input,
   border-radius: 12px;
   background: transparent;
   color: var(--muted);
-  font-size: calc(14px * var(--text-scale, 1));
+  min-width: 0;
+  /* Tab labels grow less than body text, and long Tamil words wrap instead of pushing tabs off screen. */
+  font-size: calc(13px * min(var(--text-scale, 1), 1.15));
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
   font-weight: 600;
   cursor: pointer;
 }
@@ -270,7 +275,7 @@ input:focus-visible {
 }
 .quick {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -775,4 +780,9 @@ body {
 }
 .screen > * {
   min-width: 0;
+}
+
+.quick button {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
