@@ -34,6 +34,16 @@ def configure_tracing(settings) -> None:
     _configured = True
 
 
+def flush() -> None:
+    """Send buffered spans now: Cloud Run only gives the instance CPU while a request is running."""
+    if not _configured:
+        return
+    try:
+        trace.get_tracer_provider().force_flush(timeout_millis=3000)
+    except Exception as exc:  # Never fail a request because a trace could not be sent.
+        logger.warning("Trace flush failed: %s", exc)
+
+
 @contextmanager
 def span(name: str, **attributes: Any) -> Iterator[trace.Span]:
     with trace.get_tracer("jaga-kedai").start_as_current_span(name) as current:

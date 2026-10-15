@@ -5,6 +5,7 @@ changes when the shopkeeper confirms a scan or marks an order received, and an
 order only leaves the shop when the shopkeeper approves it and taps Send.
 """
 
+import asyncio
 import logging
 import re
 import threading
@@ -25,7 +26,7 @@ from kedai.forecast import plan, reason_codes
 from kedai.messages import order_message
 from kedai.seed import ensure_demo_fresh, next_deepavali, previous_deepavali, rain_chance, seed_shop, today_sg
 from kedai.store import Store, build_store, now
-from kedai.tracing import configure_tracing
+from kedai.tracing import configure_tracing, flush
 
 logger = logging.getLogger(__name__)
 Lang = Literal["en", "zh", "ms", "ta"]
@@ -90,6 +91,7 @@ class RateLimiter:
             window.append(current)
 
 
+AI_PATHS = {"/api/scan", "/api/ask", "/api/briefing", "/api/speak"}
 SESSION_ID = re.compile(r"[A-Za-z0-9-]{8,64}")
 
 
@@ -113,7 +115,10 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
         # Anonymous per-browser id from the web app, so usage logs can show cost per visitor.
         session = request.headers.get("x-kedai-session", "")
         usage.session_id.set(session if SESSION_ID.fullmatch(session) else None)
-        return await call_next(request)
+        response = await call_next(request)
+        if request.url.path in AI_PATHS:
+            await asyncio.to_thread(flush)
+        return response
 
     # -- helpers ----------------------------------------------------------------
 
