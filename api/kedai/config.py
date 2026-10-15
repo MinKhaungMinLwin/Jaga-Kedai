@@ -36,15 +36,12 @@ class Settings(BaseSettings):
     ai_requests_per_minute: int = Field(default=20, validation_alias="KEDAI_AI_REQUESTS_PER_MINUTE")
     max_upload_bytes: int = Field(default=8 * 1024 * 1024, validation_alias="KEDAI_MAX_UPLOAD_BYTES")
 
-    # Phoenix (Arize) tracing is enabled when a collector endpoint is set.
-    phoenix_endpoint: str | None = Field(default=None, validation_alias="PHOENIX_COLLECTOR_ENDPOINT")
-    phoenix_api_key: str | None = Field(default=None, validation_alias="PHOENIX_API_KEY", repr=False)
-    phoenix_project: str = Field(default="jaga-kedai", validation_alias="PHOENIX_PROJECT_NAME")
+    # Google Cloud Trace for each AI action (needs GOOGLE_CLOUD_PROJECT). Usage/cost logs are always written.
+    cloud_trace: bool = Field(default=False, validation_alias="KEDAI_CLOUD_TRACE")
+    # Also attach the shopkeeper's question and Kaki's reply to traces (off: they are customer data).
     trace_content: bool = Field(default=False, validation_alias="KEDAI_TRACE_CONTENT")
 
-    @field_validator(
-        "gemini_api_key", "gcp_project", "admin_token", "phoenix_endpoint", "vision_model", mode="before"
-    )
+    @field_validator("gemini_api_key", "gcp_project", "admin_token", "vision_model", mode="before")
     @classmethod
     def blank_is_none(cls, value: str | None) -> str | None:
         return value or None

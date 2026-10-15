@@ -11,8 +11,8 @@ dependencies = [
     "python-multipart>=0.0.9",
     "google-genai>=2.29.0",
     "google-cloud-firestore>=2.19.0",
-    "arize-phoenix-otel>=0.13.1",
-    "openinference-instrumentation-google-genai>=1.4.7",
+    "opentelemetry-sdk>=1.27.0",
+    "opentelemetry-exporter-gcp-trace>=1.7.0",
     "tzdata>=2024.1",  # IANA time zones on Windows, where the OS has none
 ]
 

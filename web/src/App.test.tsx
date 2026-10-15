@@ -28,13 +28,13 @@ const draft = {
     on_hand: 3, days_left: 3.3, stockout_date: "2026-10-16", risk: "high", reasons: ["deepavali"] }],
 };
 
-let calls: { url: string; body?: unknown }[] = [];
+let calls: { url: string; body?: unknown; session?: string | null }[] = [];
 
 beforeEach(() => {
   calls = [];
   localStorage.clear();
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-    calls.push({ url, body: init?.body });
+    calls.push({ url, body: init?.body, session: new Headers(init?.headers).get("X-Kedai-Session") });
     const reply = (data: unknown) => new Response(JSON.stringify(data), { status: 200 });
     if (url.startsWith("/api/today")) return reply(today);
     if (url.startsWith("/api/briefing")) return reply({ headline: "早安", points: ["酥油快卖完了"], source: "gemini" });
@@ -97,4 +97,12 @@ test("approving an order can be undone, and text size is remembered", async () =
   fireEvent.click(await view.findByRole("button", { name: /批准/ }));
   fireEvent.click(await view.findByRole("button", { name: /撤销/ }));
   await waitFor(() => expect(calls.some((call) => call.url === "/api/orders/o1/undo")).toBe(true));
+});
+
+test("every API call carries the same anonymous session id", async () => {
+  const view = within(render(<App />).container);
+  await view.findByText("Mdm Lim");
+  const sessions = new Set(calls.map((call) => call.session));
+  expect(sessions.size).toBe(1);
+  expect([...sessions][0]).toMatch(/^[0-9a-f-]{36}$/);
 });

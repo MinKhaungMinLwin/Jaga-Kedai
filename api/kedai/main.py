@@ -6,6 +6,7 @@ order only leaves the shop when the shopkeeper approves it and taps Send.
 """
 
 import logging
+import re
 import threading
 import time
 from collections import defaultdict, deque
@@ -18,7 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
-from kedai import ai
+from kedai import ai, usage
 from kedai.config import Settings, get_settings
 from kedai.forecast import plan, reason_codes
 from kedai.messages import order_message
@@ -89,6 +90,9 @@ class RateLimiter:
             window.append(current)
 
 
+SESSION_ID = re.compile(r"[A-Za-z0-9-]{8,64}")
+
+
 def create_app(settings: Settings | None = None, store: Store | None = None) -> FastAPI:
     settings = settings or get_settings()
     store = store or build_store(settings)
@@ -103,6 +107,13 @@ def create_app(settings: Settings | None = None, store: Store | None = None) -> 
     app.add_middleware(
         CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["*"], allow_headers=["*"]
     )
+
+    @app.middleware("http")
+    async def remember_session(request: Request, call_next):
+        # Anonymous per-browser id from the web app, so usage logs can show cost per visitor.
+        session = request.headers.get("x-kedai-session", "")
+        usage.session_id.set(session if SESSION_ID.fullmatch(session) else None)
+        return await call_next(request)
 
     # -- helpers ----------------------------------------------------------------
 
