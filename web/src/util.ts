@@ -13,28 +13,41 @@ export function shortDate(iso: string, lang: Lang): string {
   });
 }
 
-let current: { stop: () => void } | null = null;
+/** The one voice allowed to play; claimed before the audio loads so a second tap can cancel it. */
+let current: { stop: () => void; onEnd?: () => void } | null = null;
 
+/** Stops whatever is playing or still loading, and resets the button that started it. */
 export function stopSpeaking() {
-  current?.stop();
+  const playing = current;
   current = null;
+  playing?.stop();
+  playing?.onEnd?.();
 }
 
 /** Gemini text-to-speech, falling back to the browser's own voices. */
 export async function speak(text: string, lang: Lang, onEnd?: () => void): Promise<void> {
   stopSpeaking();
+  const me: { stop: () => void; onEnd?: () => void } = { stop: () => {}, onEnd };
+  current = me;
+  const finish = () => {
+    if (current === me) current = null;
+    onEnd?.();
+  };
   try {
-    const audio = new Audio(URL.createObjectURL(await api.speak(text)));
-    current = { stop: () => audio.pause() };
-    audio.onended = () => onEnd?.();
+    const url = URL.createObjectURL(await api.speak(text));
+    if (current !== me) return URL.revokeObjectURL(url); // stopped or replaced while loading
+    const audio = new Audio(url);
+    me.stop = () => audio.pause();
+    audio.onended = finish;
     await audio.play();
   } catch {
-    if (!("speechSynthesis" in window)) return onEnd?.();
+    if (current !== me) return;
+    if (!("speechSynthesis" in window)) return finish();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = LANGS.find((item) => item.code === lang)?.speech ?? "en-SG";
     utterance.rate = 0.95;
-    utterance.onend = () => onEnd?.();
-    current = { stop: () => window.speechSynthesis.cancel() };
+    utterance.onend = finish;
+    me.stop = () => window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
   }
 }

@@ -3,7 +3,7 @@
 #
 #   PROJECT_ID=my-project deploy/deploy.sh
 #
-# Optional: MODEL, REGION, ADMIN_TOKEN, PHOENIX_COLLECTOR_ENDPOINT, PHOENIX_API_KEY, MIN_INSTANCES.
+# Optional: MODEL, REGION, ADMIN_TOKEN, MIN_INSTANCES.
 set -euo pipefail
 
 : "${PROJECT_ID:?Set PROJECT_ID to your Google Cloud project ID}"
@@ -21,7 +21,7 @@ cd "$(dirname "$0")/.."
 step "Enabling APIs"
 gcloud services enable run.googleapis.com firestore.googleapis.com aiplatform.googleapis.com \
   cloudbuild.googleapis.com artifactregistry.googleapis.com firebase.googleapis.com \
-  firebasehosting.googleapis.com iam.googleapis.com --project "$PROJECT_ID"
+  firebasehosting.googleapis.com iam.googleapis.com cloudtrace.googleapis.com --project "$PROJECT_ID"
 
 step "Firestore (Native mode, ${REGION})"
 exists gcloud firestore databases describe --database="(default)" --project "$PROJECT_ID" ||
@@ -30,7 +30,7 @@ exists gcloud firestore databases describe --database="(default)" --project "$PR
 step "Service account with least-privilege roles"
 exists gcloud iam service-accounts describe "$SA" --project "$PROJECT_ID" ||
   gcloud iam service-accounts create "$SA_NAME" --display-name "Jaga Kedai API" --project "$PROJECT_ID"
-for role in roles/datastore.user roles/aiplatform.user; do
+for role in roles/datastore.user roles/aiplatform.user roles/cloudtrace.agent; do
   gcloud projects add-iam-policy-binding "$PROJECT_ID" --member "serviceAccount:${SA}" --role "$role" \
     --condition=None >/dev/null
 done
@@ -46,9 +46,7 @@ done
 ENV_VARS="^|^KEDAI_STORE=firestore|KEDAI_AI_BACKEND=vertex|GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
 ENV_VARS+="|GOOGLE_CLOUD_LOCATION=global|KEDAI_MODEL=${MODEL}"
 [[ -n "${ADMIN_TOKEN:-}" ]] && ENV_VARS+="|KEDAI_ADMIN_TOKEN=${ADMIN_TOKEN}"
-if [[ -n "${PHOENIX_COLLECTOR_ENDPOINT:-}" ]]; then
-  ENV_VARS+="|PHOENIX_COLLECTOR_ENDPOINT=${PHOENIX_COLLECTOR_ENDPOINT}|PHOENIX_API_KEY=${PHOENIX_API_KEY:-}"
-fi
+ENV_VARS+="|KEDAI_CLOUD_TRACE=true"
 
 step "Cloud Run API (built by Cloud Build from api/Dockerfile)"
 gcloud run deploy "$SERVICE" --source api --region "$REGION" --project "$PROJECT_ID" \

@@ -1,9 +1,10 @@
 from datetime import date, timedelta
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 
-from kedai import ai
+from kedai import ai, usage
 from kedai.config import Settings
 from kedai.forecast import festival_profile, local_forecast
 from kedai.main import create_app
@@ -203,6 +204,39 @@ def test_undo_steps_orders_and_credits_back(client):
     assert client.post(f"/api/credits/{entry['id']}/undo").json() == {"status": "owing"}
     assert client.post(f"/api/credits/{entry['id']}/undo").json() == {"status": "removed"}
     assert entry["id"] not in {item["id"] for item in client.get("/api/credits").json()}
+
+
+def test_each_gemini_call_logs_tokens_and_estimated_cost(monkeypatch):
+    lines = []
+    monkeypatch.setattr(usage, "_emit", lines.append)
+    usage.session_id.set("visitor-1234")
+    meta = SimpleNamespace(prompt_token_count=4000, candidates_token_count=300, thoughts_token_count=100)
+    entry = usage.record(
+        "ask", "gemini-3.5-flash-lite", SimpleNamespace(usage_metadata=meta), shop_id="demo", project="p"
+    )
+    assert lines == [entry]
+    assert (
+        entry["event"] == "gemini_usage"
+        and entry["feature"] == "ask"
+        and entry["session_id"] == "visitor-1234"
+    )
+    assert (entry["input_tokens"], entry["output_tokens"]) == (4000, 400)
+    assert entry["cost_usd"] == (4000 * 0.30 + 400 * 2.50) / 1_000_000
+    unknown = usage.record("ask", "some-new-model", SimpleNamespace(), shop_id="demo", project=None)
+    assert unknown["cost_usd"] is None and unknown["input_tokens"] == 0
+
+
+def test_api_tags_ai_calls_with_the_visitor_session(client, monkeypatch):
+    seen = []
+
+    def fake_briefing(settings, **kwargs):
+        seen.append(usage.session_id.get())
+        return ai.Briefing(headline="Morning", points=[])
+
+    monkeypatch.setattr(ai, "briefing", fake_briefing)
+    client.get("/api/briefing?lang=en", headers={"X-Kedai-Session": "abc12345-visitor"})
+    client.get("/api/briefing?lang=zh", headers={"X-Kedai-Session": "bad id!"})
+    assert seen == ["abc12345-visitor", None]
 
 
 def test_demo_shop_reseeds_on_a_new_day(monkeypatch):

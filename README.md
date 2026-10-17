@@ -35,7 +35,7 @@ orders stay drafts until he approves them, and nothing reaches a supplier until 
 | **Cloud Run** | The FastAPI service: forecasting, order planning, the Gemini calls, and the business rules (hard stops, rate limits). |
 | **Firestore** | The shop's live data: products and stock, suppliers, daily sales, regulars, shelf scans, orders and the activity timeline. Browsers can't touch it; only the API's service account can. |
 | **Firebase Hosting** | Serves the mobile web app (installable PWA) and routes `/api/**` to Cloud Run on the same origin. |
-| Arize Phoenix (optional) | OpenTelemetry tracing of every Gemini call and shop action. |
+| **Cloud Trace + Cloud Logging** | A trace per AI action, and one structured log line per Gemini call with tokens and estimated cost, by feature, shop and visitor ([docs/usage.md](docs/usage.md)). |
 
 ```mermaid
 flowchart LR
@@ -43,7 +43,7 @@ flowchart LR
   H -->|"/api/** rewrite"| R["Cloud Run<br/>FastAPI"]
   R -->|"photo, voice, text"| G["Gemini on Vertex AI"]
   R <-->|"stock, sales, orders"| F[("Firestore")]
-  R -.->|traces| P["Phoenix"]
+  R -.->|"traces, usage logs"| O["Cloud Trace + Logging"]
   U -->|"approved order"| W["WhatsApp to supplier"]
 ```
 

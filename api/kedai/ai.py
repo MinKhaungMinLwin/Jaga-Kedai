@@ -12,6 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from kedai import usage
 from kedai.config import Settings
 from kedai.tracing import span
 
@@ -50,7 +51,13 @@ def client(settings: Settings):
         return _client
 
 
-def _structured(settings: Settings, model: str, contents, instruction: str, schema: type[BaseModel]):
+def _record(settings: Settings, feature: str, model: str, response) -> None:
+    usage.record(feature, model, response, shop_id=settings.shop_id, project=settings.gcp_project)
+
+
+def _structured(
+    settings: Settings, feature: str, model: str, contents, instruction: str, schema: type[BaseModel]
+):
     from google.genai import types
 
     response = client(settings).models.generate_content(
@@ -63,6 +70,7 @@ def _structured(settings: Settings, model: str, contents, instruction: str, sche
             temperature=0.2,
         ),
     )
+    _record(settings, feature, model, response)
     parsed = response.parsed
     return parsed if isinstance(parsed, schema) else schema.model_validate_json(response.text)
 
@@ -108,9 +116,10 @@ def scan_shelf(
         }
         for p in products
     ]
-    with span("shelf.scan", "CHAIN", image_bytes=len(image), product_count=len(products)) as current:
+    with span("shelf.scan", image_bytes=len(image), product_count=len(products)) as current:
         result = _structured(
             settings,
+            "scan",
             settings.vision_model or settings.model,
             [
                 types.Part.from_bytes(data=image, mime_type=mime_type),
@@ -183,13 +192,13 @@ def ask(
         area=shop.get("area", ""),
         language=LANGUAGE_NAMES.get(lang, LANGUAGE_NAMES["en"]),
     )
-    with span("kaki.ask", "AGENT", input_mode="audio" if audio else "text", language=lang) as current:
+    with span("kaki.ask", input_mode="audio" if audio else "text", language=lang) as current:
         if settings.trace_content and text:
-            current.set_attribute("input.value", text)
-        result = _structured(settings, settings.model, contents, instruction, AskResult)
+            current.set_attribute("kaki.question", text)
+        result = _structured(settings, "ask", settings.model, contents, instruction, AskResult)
         current.set_attribute("kaki.action", result.action)
         if settings.trace_content:
-            current.set_attribute("output.value", result.reply)
+            current.set_attribute("kaki.reply", result.reply)
         return result
 
 
@@ -211,9 +220,10 @@ No invented numbers, no markdown, no SKU codes. Write in {language}."""
 
 
 def briefing(settings: Settings, *, shop: dict, context: dict, lang: str) -> Briefing:
-    with span("kaki.briefing", "CHAIN", language=lang):
+    with span("kaki.briefing", language=lang):
         return _structured(
             settings,
+            "briefing",
             settings.model,
             f"SHOP DATA: {json.dumps(context, ensure_ascii=False)}",
             BRIEFING_INSTRUCTION.format(
@@ -243,7 +253,7 @@ def pcm_to_wav(pcm: bytes, sample_rate: int = 24_000) -> bytes:
 def speak(settings: Settings, text: str) -> bytes:
     from google.genai import types
 
-    with span("kaki.speak", "CHAIN", characters=len(text), model=settings.tts_model):
+    with span("kaki.speak", characters=len(text), model=settings.tts_model):
         response = client(settings).models.generate_content(
             model=settings.tts_model,
             contents=f"Say warmly and clearly, at a relaxed pace: {text}",
@@ -256,6 +266,7 @@ def speak(settings: Settings, text: str) -> bytes:
                 ),
             ),
         )
+        _record(settings, "speak", settings.tts_model, response)
         for part in response.candidates[0].content.parts:
             if part.inline_data and part.inline_data.data:
                 return pcm_to_wav(part.inline_data.data)

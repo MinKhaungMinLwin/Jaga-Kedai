@@ -118,8 +118,31 @@ export class ApiError extends Error {
   }
 }
 
+const SESSION_KEY = "jaga-kedai.session";
+
+/** Anonymous id for this browser tab, so usage logs can show what one visitor costs. No personal data. */
+function sessionId(): string {
+  try {
+    let id = sessionStorage.getItem(SESSION_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      sessionStorage.setItem(SESSION_KEY, id);
+    }
+    return id;
+  } catch {
+    return "";
+  }
+}
+
+function withSession(init: RequestInit): RequestInit {
+  const headers = new Headers(init.headers);
+  const id = sessionId();
+  if (id) headers.set("X-Kedai-Session", id);
+  return { ...init, headers };
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`/api${path}`, init);
+  const response = await fetch(`/api${path}`, withSession(init));
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as { detail?: string } | null;
     throw new ApiError(response.status, body?.detail ?? `Request failed (${response.status})`);
@@ -165,7 +188,7 @@ export const api = {
     return request<AskReply>("/ask", { method: "POST", body: form });
   },
   speak: async (text: string): Promise<Blob> => {
-    const response = await fetch("/api/speak", json({ text }));
+    const response = await fetch("/api/speak", withSession(json({ text })));
     if (!response.ok) throw new ApiError(response.status, "Speech unavailable");
     return response.blob();
   },
