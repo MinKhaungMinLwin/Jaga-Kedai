@@ -2,6 +2,11 @@
 
 > *Jaga* = to look after, *Kedai* = shop (Malay). Inside the app, your assistant is *Kaki*, the buddy (Singlish).
 
+> [!IMPORTANT]
+> **This `main` branch is a project overview only.** The source code (API, web app, deploy scripts, tests)
+> lives on the **[`stg` branch](https://github.com/MinKhaungMinLwin/Jaga-Kedai/tree/stg)**, which is the
+> default branch. Try the live app at **[jagakedai.mkmlwin.com](https://jagakedai.mkmlwin.com)**.
+
 Singapore's neighbourhood provision shops run on memory and a notebook. Supermarkets
 have data teams; Uncle Tan, 64, has a 30-year feel for his shop in Toa Payoh — and
 more comfort in Mandarin than in spreadsheets. When the monsoon or Deepavali shifts
@@ -48,6 +53,8 @@ flowchart LR
 ```
 
 ## Run locally
+
+Check out the code first: `git clone -b stg https://github.com/MinKhaungMinLwin/Jaga-Kedai.git`
 
 ```bash
 # API (http://localhost:8080) — in-memory store, seeded demo shop
