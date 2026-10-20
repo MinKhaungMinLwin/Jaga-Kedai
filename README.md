@@ -15,6 +15,9 @@ demand, he finds out when the shelf is already empty.
 - 🪔 **Remembers last Deepavali.** The forecast learns each festival item's uplift from last year's sales ("ghee sold 3.2× more in the final week") and orders ahead of the rush.
 - 🌧 **Ready for the monsoon** — rising umbrella and poncho sales are caught early.
 - 💛 **Notices the regulars.** "Mdm Lim hasn't come in for 19 days" — a nudge to check on a neighbour.
+- 📒 **Credit book.** Who took goods to pay later, how much, and one tap when they pay.
+- 👓 **Made for older eyes.** Text size A / A+ / A++, a read-aloud button on every card, and a 10-second
+  *Undo* after each approval, delivery or payment.
 
 ### Hard stops, by design
 AI proposes; the shopkeeper decides. Shelf counts don't change stock until he saves them,
@@ -75,11 +78,24 @@ account, deploys the API to Cloud Run (kept warm), builds the web app and deploy
 Firebase Hosting plus Firestore rules. The demo shop seeds itself on first request and
 refreshes once a day, so every visitor sees a current, consistent story.
 
+The script deploys **from your local folder**, not from GitHub: commit and pull first, so the
+live site matches the repo. Optional: `ADMIN_TOKEN` (protects `/api/admin/reset`), `MIN_INSTANCES`
+(1 keeps the API warm for demos; 0 scales to zero), `MODEL`, `REGION`.
+
+Troubleshooting a first deploy:
+- **"Assertion failed: resolving hosting target…"** — the project isn't a Firebase project yet (accept the
+  Firebase terms once at console.firebase.google.com → *Add Firebase to a Google Cloud project*), or the
+  Firebase login expired (`firebase login --reauth`).
+- **"Reauthentication required"** — run `gcloud auth login` in the browser rather than typing a password.
+- Re-running the script is safe; it skips anything that already exists.
+
+AI usage and cost per feature, shop and visitor: see [docs/usage.md](docs/usage.md).
+
 ## Tests
 
 ```bash
-cd api && uv run pytest     # forecasting, festival learning, hard stops, fallbacks
-cd web && npm test          # language switching, approval flow
+cd api && uv run pytest     # forecasting, festival learning, hard stops, undo, credit book, fallbacks, usage logs
+cd web && npm test          # languages, approval + undo, credit book, text size, session id
 ```
 
 ## Demo data
